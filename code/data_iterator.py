@@ -1,12 +1,9 @@
-import codecs
 import glob
 import json
-import random
-import math
 
+import h5py
 import numpy as np
 import torch
-import h5py
 
 from tokenizer import FullTokenizer
 from utils import clean_text_by_sentences
@@ -14,18 +11,45 @@ from utils import clean_text_by_sentences
 
 class Dataset(object):
 
-    def __init__(self, file_pattern = None, vocab_file = None):
+    def __init__(self, file_pattern=None, vocab_file=None):
 
         self._file_pattern = file_pattern
         self._max_len = 60
-        print("input max len : "+str(self._max_len))
+        print("input max len : " + str(self._max_len))
         if vocab_file is not None:
             self._tokenizer = FullTokenizer(vocab_file, True)
+
+    # importance
+
+    def iterate_once_doc_importance(self):
+        def file_stream():
+            for file_name in glob.glob(self._file_pattern):
+                yield file_name
+
+        for value in self._doc_stream_importance(file_stream()):
+            yield value
+
+    def _doc_stream_importance(self, file_stream):
+        for file_name in file_stream:
+            for doc in self._parse_file2doc_importance(file_name):
+                yield doc
+
+    def _parse_file2doc_importance(self, file_name):
+        print("Processing file: %s" % file_name)
+        with h5py.File(file_name, 'r') as f:
+            for j_str in f['dataset']:
+                obj = json.loads(j_str)
+                article, abstract = obj['article'], obj['abstract']
+
+                yield article, abstract
+
+    # tf idf
 
     def iterate_once_doc_tfidf(self):
         def file_stream():
             for file_name in glob.glob(self._file_pattern):
                 yield file_name
+
         for value in self._doc_stream_tfidf(file_stream()):
             yield value
 
@@ -36,22 +60,24 @@ class Dataset(object):
 
     def _parse_file2doc_tfidf(self, file_name):
         print("Processing file: %s" % file_name)
-        with h5py.File(file_name,'r') as f:
+        with h5py.File(file_name, 'r') as f:
             for j_str in f['dataset']:
                 obj = json.loads(j_str)
                 article, abstract = obj['article'], obj['abstract']
-                #article, abstract = obj['article'], obj['abstracts']
+                # article, abstract = obj['article'], obj['abstracts']
                 clean_article = clean_text_by_sentences(article)
                 segmented_artile = [sentence.split() for sentence in clean_article]
-                #print(tokenized_article[0])
+                # print(tokenized_article[0])
 
                 yield article, abstract, [segmented_artile]
 
+    # bert
 
     def iterate_once_doc_bert(self):
         def file_stream():
             for file_name in glob.glob(self._file_pattern):
                 yield file_name
+
         for value in self._doc_iterate_bert(self._doc_stream_bert(file_stream())):
             yield value
 
@@ -62,13 +88,13 @@ class Dataset(object):
 
     def _parse_file2doc_bert(self, file_name):
         print("Processing file: %s" % file_name)
-        with h5py.File(file_name,'r') as f:
+        with h5py.File(file_name, 'r') as f:
             for j_str in f['dataset']:
                 obj = json.loads(j_str)
                 article, abstract = obj['article'], obj['abstract']
-                #article, abstract = obj['article'], obj['abstracts']
+                # article, abstract = obj['article'], obj['abstracts']
                 tokenized_article = [self._tokenizer.tokenize(sen) for sen in article]
-                #print(tokenized_article[0])
+                # print(tokenized_article[0])
 
                 article_token_ids = []
                 article_seg_ids = []
@@ -77,8 +103,7 @@ class Dataset(object):
                 pair_indice = []
                 k = 0
                 for i in range(len(article)):
-                    for j in range(i+1, len(article)):
-
+                    for j in range(i + 1, len(article)):
                         tokens_a = tokenized_article[i]
                         tokens_b = tokenized_article[j]
 
@@ -91,8 +116,8 @@ class Dataset(object):
                         article_token_ids_c.append(input_ids_c)
                         article_seg_ids_c.append(segment_ids_c)
 
-                        pair_indice.append(((i,j), k))
-                        k+=1
+                        pair_indice.append(((i, j), k))
+                        k += 1
                 yield article_token_ids, article_seg_ids, article_token_ids_c, article_seg_ids_c, pair_indice, article, abstract
 
     def _doc_iterate_bert(self, docs):
@@ -103,27 +128,27 @@ class Dataset(object):
                 yield None, None, None, None, None, None, pair_indice, article, abstract
                 continue
             num_steps = max(len(item) for item in article_token_ids)
-            #num_steps = max(len(item) for item in iarticle)
+            # num_steps = max(len(item) for item in iarticle)
             batch_size = len(article_token_ids)
             x = np.zeros([batch_size, num_steps], np.int32)
             t = np.zeros([batch_size, num_steps], np.int32)
             w = np.zeros([batch_size, num_steps], np.uint8)
 
             num_steps_c = max(len(item) for item in article_token_ids_c)
-            #num_steps = max(len(item) for item in iarticle)
+            # num_steps = max(len(item) for item in iarticle)
             x_c = np.zeros([batch_size, num_steps_c], np.int32)
             t_c = np.zeros([batch_size, num_steps_c], np.int32)
             w_c = np.zeros([batch_size, num_steps_c], np.uint8)
             for i in range(batch_size):
                 num_tokens = len(article_token_ids[i])
-                x[i,:num_tokens] = article_token_ids[i]
-                t[i,:num_tokens] = article_seg_ids[i]
-                w[i,:num_tokens] = 1
+                x[i, :num_tokens] = article_token_ids[i]
+                t[i, :num_tokens] = article_seg_ids[i]
+                w[i, :num_tokens] = 1
 
                 num_tokens_c = len(article_token_ids_c[i])
-                x_c[i,:num_tokens_c] = article_token_ids_c[i]
-                t_c[i,:num_tokens_c] = article_seg_ids_c[i]
-                w_c[i,:num_tokens_c] = 1
+                x_c[i, :num_tokens_c] = article_token_ids_c[i]
+                t_c[i, :num_tokens_c] = article_seg_ids_c[i]
+                w_c[i, :num_tokens_c] = 1
 
             if not np.any(w):
                 return
@@ -135,7 +160,7 @@ class Dataset(object):
             out_t_c = torch.LongTensor(t_c)
             out_w_c = torch.LongTensor(w_c)
 
-            yield  article, abstract, (out_x, out_t, out_w, out_x_c, out_t_c, out_w_c, pair_indice)
+            yield article, abstract, (out_x, out_t, out_w, out_x_c, out_t_c, out_w_c, pair_indice)
 
     def _2bert_rep(self, tokens_a, tokens_b=None):
 
@@ -162,9 +187,9 @@ class Dataset(object):
 
             tokens.append("[SEP]")
             segment_ids.append(1)
-        #print(tokens)
+        # print(tokens)
         input_ids = self._tokenizer.convert_tokens_to_ids(tokens)
-        #print(input_ids)
+        # print(input_ids)
 
         return input_ids, segment_ids
 
