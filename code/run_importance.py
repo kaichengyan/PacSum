@@ -6,7 +6,7 @@ from importance import PacSumExtractorWithImportance
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str, choices=['tune', 'test'], help='tune or test')
-    parser.add_argument('--tune_data_file', type=str, help='data for tunining hyperparameters',
+    parser.add_argument('--tune_data_file', type=str, help='data for tuning hyperparameters',
                         default='../data/NYT/nyt.validation.h5df')
     parser.add_argument('--test_data_file', type=str, help='data for testing',
                         default='../data/NYT/nyt.test.h5df')
