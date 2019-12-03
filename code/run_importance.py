@@ -1,7 +1,7 @@
 import argparse
 
 from data_iterator import Dataset
-from importance import PacSumExtractorWithImportance
+from importance import *
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    extractor = PacSumExtractorWithImportance(device=args.device)
+    extractor = PacSumExtractorWithImportanceV0(device=args.device)
 
     # tune
     if args.mode == 'tune':
