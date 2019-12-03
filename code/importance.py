@@ -50,18 +50,34 @@ class PacSumExtractorWithImportance:
         return extracted
 
     def _calculate_all_sentence_importance(self, article: List[str]) -> List[float]:
-         return [self._calculate_sentence_importance_v3(idx, article)
-                 for idx, sen in enumerate(article)]
+        return [self._calculate_sentence_importance(idx, article)
+                for idx, sen in enumerate(article)]
 
-    def _calculate_sentence_importance_v3(self, i: int, article: List[str]) -> float:
+    def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
+        raise NotImplementedError
+
+
+class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
+
+    def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
+        """
+        Sample sentences in the window of si.
+        For each sentence sk, sample q words from each sentence.
+        iota2(si | D) = sum_k sum_j (log P(wj | sk' + si) - log P(wj | sk'))
+        :param i: The index of sentence si to calculate iota of
+        :param article: The article that si is in
+        :return: The importance of sentence si
+        """
         si = article[i]
         s_importance = 0
         # sample p sentences sk from article s.t. k != i
         sks = np.random.choice(article, self.num_sentence_samples, replace=False)
         for sk in sks:
             sentence_pairs, masked_lm_labels, loss_mask = self._generate_batch_for_si_and_sk(si, sk)
-            loss = self.masked_lm(sentence_pairs, masked_lm_labels=None)
-            s_importance += loss
+            loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)
+            sentence_pairs_sk, masked_lm_labels_sk, loss_mask_sk = self._generate_batch_for_si_and_sk(si, sk)
+            loss_sk = self.masked_lm(sentence_pairs_sk, masked_lm_labels=masked_lm_labels_sk)
+            s_importance += loss - loss_sk
         return s_importance
 
     def _generate_batch_for_si_and_sk(self, si, sk):
@@ -105,7 +121,53 @@ class PacSumExtractorWithImportance:
 
         return sentence_pairs, masked_lm_labels, loss_mask
 
+    def _generate_batch_for_sk(self, sk):
+        sk_encoded = self.tokenizer.encode(sk)
+        sk_len = len(sk_encoded)
+
+        # sample num_word_samples word indices in sk
+        word_indices = np.random.choice(sk_len, self.num_word_samples)
+
+        # sj_masked_copies: [num_word_samples * sk_len]
+        sk_copies = torch.tensor([sk_encoded]).repeat(self.num_word_samples, 1).to(self.device)
+        mask = torch.eye(sk_len).bool()[word_indices].to(self.device)
+        # mask out labels
+        sk_masked_copies = sk_copies.masked_fill(mask, self.tokenizer.mask_token_id)
+
+        # bos/eos_copies:  [num_word_samples * 1]
+        bos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.bos_token_id).long()
+        eos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.eos_token_id).long()
+
+        sentence_pairs = torch.cat((bos_copies, sk_masked_copies, eos_copies),
+                                   1).to(self.device)
+
+        # masked_lm_labels = torch.cat((torch.zeros(sj_len, si_len + 3).fill_(-1).long(),
+        #                               sj_masked_labels,
+        #                               torch.zeros(sj_len, 1).fill_(-1).long())
+        #                              , 1).to(self.device)
+
+        loss_mask = torch.cat((torch.zeros(self.num_word_samples, 1).bool(),
+                               mask,
+                               torch.zeros(self.num_word_samples, 1).bool()),
+                              1).to(self.device)
+
+        masked_lm_labels = torch.zeros_like(loss_mask).to(self.device)
+        masked_lm_labels.fill_(-1).long().masked_scatter(loss_mask, sk_copies)
+
+        return sentence_pairs, masked_lm_labels, loss_mask
+
+
+class PacSumExtractorWithImportanceV0(PacSumExtractorWithImportance):
+
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
+        """
+        For each other sentence sj in the article,
+        for each word wk in sj,
+        iota0(si | D) = sum_j sum_k (log P(wk | sj' + si))
+        :param i: The index of sentence si to calculate iota of
+        :param article: The article that si is in
+        :return: The importance of sentence si
+        """
         si = article[i]
         s_importance = 0
         for j in range(len(article)):
