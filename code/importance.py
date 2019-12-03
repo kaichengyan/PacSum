@@ -10,16 +10,13 @@ from utils import evaluate_rouge
 class PacSumExtractorWithImportance:
     def __init__(self,
                  extract_num: int = 3,
-                 num_sentence_samples: int = 10,
-                 num_word_samples: int = 3,
                  device: str = 'cuda') -> None:
         super().__init__()
         self.extract_num: int = extract_num
         self.device: str = device
         self.masked_lm: RobertaForMaskedLM = RobertaForMaskedLM.from_pretrained('roberta-base').to(device)
         self.tokenizer: RobertaTokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-        self.num_sentence_samples: int = num_sentence_samples
-        self.num_word_samples: int = num_word_samples
+
 
     def extract_summary(self, data_iterator: Iterator[Tuple[List[str], List[str]]]) -> None:
         summaries: List[List[str]] = []
@@ -57,7 +54,33 @@ class PacSumExtractorWithImportance:
         raise NotImplementedError
 
 
+class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
+    def __init__(self,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
+        """
+        Sample k phrases pi from si, sample m phrases pj from the window of si Di,
+        iota3(si | D) = sum_pi sum_pj (log P(pj | D(si)) - log P(pj | D(si) - pi))
+        :param i: The index of sentence si to calculate iota of
+        :param article: The article that si is in
+        :return: The importance of sentence si
+        """
+        si = article[i]
+        s_importance = 0
+        # TODO:
+        return s_importance
+
+
 class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
+    def __init__(self,
+                 num_sentence_samples: int = 10,
+                 num_word_samples: int = 3,
+                 *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.num_sentence_samples = num_sentence_samples
+        self.num_word_samples = num_word_samples
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         """
@@ -157,7 +180,28 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
         return sentence_pairs, masked_lm_labels, loss_mask
 
 
+class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
+
+    def __init__(self, num_word_samples, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_word_samples = num_word_samples
+
+    def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
+        """
+        Sample k words from D - si, for each word wj, compute its window Dj that contains si.
+        iota1(si | D) = sum_j (log P(wk | Dj) - log P(wj | Dj - si))
+        :param i: The index of sentence si to calculate iota of
+        :param article: The article that si is in
+        :return: The importance of sentence si
+        """
+        si = article[i]
+        s_importance = 0
+        # TODO:
+        return s_importance
+
 class PacSumExtractorWithImportanceV0(PacSumExtractorWithImportance):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         """
