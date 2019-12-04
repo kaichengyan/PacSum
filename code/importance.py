@@ -60,8 +60,12 @@ class PacSumExtractorWithImportance:
 
 class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
     def __init__(self,
+                 num_pi_samples: int,
+                 num_pj_samples: int,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.num_pi_samples = num_pi_samples
+        self.num_pj_samples = num_pj_samples
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         """
@@ -173,9 +177,10 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
 
 class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
 
-    def __init__(self, num_word_samples, *args, **kwargs):
+    def __init__(self, num_word_samples: int = 5, window_size: int = 3, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.num_word_samples = num_word_samples
+        self.window_size = window_size
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         """
@@ -185,7 +190,10 @@ class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
         :param article: The article that si is in
         :return: The importance of sentence si
         """
+        w = self.window_size
         si = article[i]
+        window_min, window_max = max(0, i - w), min(len(article) - 1, i + w)
+
         s_importance = 0
         # TODO:
         return s_importance
