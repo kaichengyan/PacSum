@@ -9,7 +9,7 @@ if __name__ == '__main__':
     parser.add_argument('--tune_data_file', type=str, help='data for tuning hyperparameters',
                         default='../data/NYT/nyt.validation.h5df')
     parser.add_argument('--test_data_file', type=str, help='data for testing',
-                        default='../data/NYT/nyt.test.h5df')
+                        default='../data/NYT/nyt.validation.h5df')
     parser.add_argument('--device', type=str, help='device to use', default='cuda')
 
     args = parser.parse_args()
