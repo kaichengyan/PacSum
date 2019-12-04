@@ -2,6 +2,7 @@ from typing import List, Tuple, Iterator
 
 import torch
 import numpy as np
+from tqdm import tqdm
 from transformers import RobertaForMaskedLM, RobertaTokenizer
 
 from utils import evaluate_rouge
@@ -22,7 +23,8 @@ class PacSumExtractorWithImportance:
         summaries: List[List[str]] = []
         references: List[List[List[str]]] = []
 
-        for article, abstract in data_iterator:
+        for idx, (article, abstract) in enumerate(data_iterator):
+            print("Processing article", idx, "...")
             if len(article) <= self.extract_num:
                 summaries.append(article)
                 references.append([abstract])
@@ -47,8 +49,10 @@ class PacSumExtractorWithImportance:
         return extracted
 
     def _calculate_all_sentence_importance(self, article: List[str]) -> List[float]:
-        return [self._calculate_sentence_importance(idx, article)
-                for idx, sen in enumerate(article)]
+        all_importances = []
+        for idx in tqdm(range(len(article))):
+            all_importances.append(self._calculate_sentence_importance(idx, article))
+        return all_importances
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         raise NotImplementedError
@@ -222,8 +226,8 @@ class PacSumExtractorWithImportanceV0(PacSumExtractorWithImportance):
                 sentence_pairs, masked_lm_labels, loss_mask = self._generate_batch(si, sj)
                 # What is P_BERT(s_j | s_i)
                 # Is the NLL loss just -sum(log P(w_l | s_i + s_j - w_l))?
-                print(sentence_pairs.size())
-                loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0]
+                with torch.no_grad():
+                    loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0].cpu()
                 s_importance += loss
         return s_importance
 
