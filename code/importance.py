@@ -100,10 +100,11 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
         # sample p sentences sk from article s.t. k != i
         sks = np.random.choice(article, self.num_sentence_samples, replace=False)
         for sk in sks:
-            sentence_pairs, masked_lm_labels, loss_mask = self._generate_batch_for_si_and_sk(si, sk)
-            loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)
-            sentence_pairs_sk, masked_lm_labels_sk, loss_mask_sk = self._generate_batch_for_si_and_sk(si, sk)
-            loss_sk = self.masked_lm(sentence_pairs_sk, masked_lm_labels=masked_lm_labels_sk)
+            with torch.no_grad():
+                sentence_pairs, masked_lm_labels, loss_mask = self._generate_batch_for_si_and_sk(si, sk)
+                loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0].cpu()
+                sentence_pairs_sk, masked_lm_labels_sk, loss_mask_sk = self._generate_batch_for_si_and_sk(si, sk)
+                loss_sk = self.masked_lm(sentence_pairs_sk, masked_lm_labels=masked_lm_labels_sk)[0].cpu()
             s_importance += loss - loss_sk
         return s_importance
 
@@ -115,38 +116,31 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
         word_indices = np.random.choice(sk_len, self.num_word_samples)
 
         # sj_masked_copies: [num_word_samples * sk_len]
-        sk_copies = torch.tensor([sk_encoded]).repeat(self.num_word_samples, 1).to(self.device)
-        mask = torch.eye(sk_len).bool()[word_indices].to(self.device)
+        sk_copies = torch.tensor([sk_encoded]).repeat(self.num_word_samples, 1)
+        mask = torch.eye(sk_len).bool()[word_indices]
         # mask out labels
         sk_masked_copies = sk_copies.masked_fill(mask, self.tokenizer.mask_token_id)
 
         # si_copies: [num_word_samples * si_len]
         si_encoded = self.tokenizer.encode(si)
         si_len = len(si_encoded)
-        si_copies = torch.tensor([si_encoded]).repeat(self.num_word_samples, 1).to(self.device)
+        si_copies = torch.tensor([si_encoded]).repeat(self.num_word_samples, 1)
 
         # bos/eos_copies:  [num_word_samples * 1]
-        bos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.bos_token_id).long()
-        eos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.eos_token_id).long()
+        bos_copies = torch.zeros(self.num_word_samples, 1).fill_(self.tokenizer.bos_token_id).long()
+        eos_copies = torch.zeros(self.num_word_samples, 1).fill_(self.tokenizer.eos_token_id).long()
 
         sentence_pairs = torch.cat((bos_copies, si_copies, eos_copies,
-                                    eos_copies, sk_masked_copies, eos_copies),
-                                   1).to(self.device)
-
-        # masked_lm_labels = torch.cat((torch.zeros(sj_len, si_len + 3).fill_(-1).long(),
-        #                               sj_masked_labels,
-        #                               torch.zeros(sj_len, 1).fill_(-1).long())
-        #                              , 1).to(self.device)
+                                    eos_copies, sk_masked_copies, eos_copies), 1)
 
         loss_mask = torch.cat((torch.zeros(self.num_word_samples, si_len + 3).bool(),
                                mask,
-                               torch.zeros(self.num_word_samples, 1).bool()),
-                              1).to(self.device)
+                               torch.zeros(self.num_word_samples, 1).bool()), 1)
 
-        masked_lm_labels = torch.zeros_like(loss_mask).to(self.device)
+        masked_lm_labels = torch.zeros_like(loss_mask)
         masked_lm_labels.fill_(-1).long().masked_scatter(loss_mask, sk_copies)
 
-        return sentence_pairs, masked_lm_labels, loss_mask
+        return sentence_pairs.to(self.device), masked_lm_labels.to(self.device), loss_mask.to(self.device)
 
     def _generate_batch_for_sk(self, sk):
         sk_encoded = self.tokenizer.encode(sk)
@@ -156,32 +150,25 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
         word_indices = np.random.choice(sk_len, self.num_word_samples)
 
         # sj_masked_copies: [num_word_samples * sk_len]
-        sk_copies = torch.tensor([sk_encoded]).repeat(self.num_word_samples, 1).to(self.device)
-        mask = torch.eye(sk_len).bool()[word_indices].to(self.device)
+        sk_copies = torch.tensor([sk_encoded]).repeat(self.num_word_samples, 1)
+        mask = torch.eye(sk_len).bool()[word_indices]
         # mask out labels
         sk_masked_copies = sk_copies.masked_fill(mask, self.tokenizer.mask_token_id)
 
         # bos/eos_copies:  [num_word_samples * 1]
-        bos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.bos_token_id).long()
-        eos_copies = torch.zeros(self.num_word_samples, 1).to(self.device).fill_(self.tokenizer.eos_token_id).long()
+        bos_copies = torch.zeros(self.num_word_samples, 1).fill_(self.tokenizer.bos_token_id).long()
+        eos_copies = torch.zeros(self.num_word_samples, 1).fill_(self.tokenizer.eos_token_id).long()
 
-        sentence_pairs = torch.cat((bos_copies, sk_masked_copies, eos_copies),
-                                   1).to(self.device)
-
-        # masked_lm_labels = torch.cat((torch.zeros(sj_len, si_len + 3).fill_(-1).long(),
-        #                               sj_masked_labels,
-        #                               torch.zeros(sj_len, 1).fill_(-1).long())
-        #                              , 1).to(self.device)
+        sentence_pairs = torch.cat((bos_copies, sk_masked_copies, eos_copies), 1)
 
         loss_mask = torch.cat((torch.zeros(self.num_word_samples, 1).bool(),
                                mask,
-                               torch.zeros(self.num_word_samples, 1).bool()),
-                              1).to(self.device)
+                               torch.zeros(self.num_word_samples, 1).bool()), 1)
 
-        masked_lm_labels = torch.zeros_like(loss_mask).to(self.device)
+        masked_lm_labels = torch.zeros_like(loss_mask)
         masked_lm_labels.fill_(-1).long().masked_scatter(loss_mask, sk_copies)
 
-        return sentence_pairs, masked_lm_labels, loss_mask
+        return sentence_pairs.to(self.device), masked_lm_labels.to(self.device), loss_mask.to(self.device)
 
 
 class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
