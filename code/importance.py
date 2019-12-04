@@ -24,6 +24,9 @@ class PacSumExtractorWithImportance:
         references: List[List[List[str]]] = []
 
         for idx, (article, abstract) in enumerate(data_iterator):
+            # FIXME: testing on 10 samples for now
+            if idx >= 10:
+                break
             print("Processing article", idx, "...")
             if len(article) <= self.extract_num:
                 summaries.append(article)
@@ -34,6 +37,7 @@ class PacSumExtractorWithImportance:
             article_importance = self._calculate_all_sentence_importance(article)
             ids: List[int] = self._select_tops(article_importance)
             summary = list(map(lambda x: article[x], ids))
+            print(summary, abstract)
 
             summaries.append(summary)
             references.append([abstract])
@@ -83,10 +87,12 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
 
 class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
     def __init__(self,
-                 num_sentence_samples: int = 10,
+                 sentence_sample_window_size: int = 3,
+                 num_sentence_samples: int = 3,
                  num_word_samples: int = 3,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.sentence_sample_window_size = sentence_sample_window_size
         self.num_sentence_samples = num_sentence_samples
         self.num_word_samples = num_word_samples
 
@@ -102,12 +108,13 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
         si = article[i]
         s_importance = 0
         # sample p sentences sk from article s.t. k != i
+        # FIXME: should probably sample from window of si
         sks = np.random.choice(article, self.num_sentence_samples, replace=False)
         for sk in sks:
             with torch.no_grad():
                 sentence_pairs, masked_lm_labels, loss_mask = self._generate_batch_for_si_and_sk(si, sk)
                 loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0].cpu()
-                sentence_pairs_sk, masked_lm_labels_sk, loss_mask_sk = self._generate_batch_for_si_and_sk(si, sk)
+                sentence_pairs_sk, masked_lm_labels_sk, loss_mask_sk = self._generate_batch_for_sk(sk)
                 loss_sk = self.masked_lm(sentence_pairs_sk, masked_lm_labels=masked_lm_labels_sk)[0].cpu()
             s_importance += loss - loss_sk
         return s_importance
@@ -142,7 +149,7 @@ class PacSumExtractorWithImportanceV2(PacSumExtractorWithImportance):
                                torch.zeros(self.num_word_samples, 1).bool()), 1)
 
         masked_lm_labels = torch.zeros_like(loss_mask)
-        masked_lm_labels.fill_(-1).long().masked_scatter(loss_mask, sk_copies)
+        masked_lm_labels.fill_(-1).long().masked_scatter_(loss_mask, sk_copies)
 
         return sentence_pairs.to(self.device), masked_lm_labels.to(self.device), loss_mask.to(self.device)
 
@@ -193,6 +200,7 @@ class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
         w = self.window_size
         si = article[i]
         window_min, window_max = max(0, i - w), min(len(article) - 1, i + w)
+        window = article[window_min:window_max+1]
 
         s_importance = 0
         # TODO:
@@ -247,15 +255,10 @@ class PacSumExtractorWithImportanceV0(PacSumExtractorWithImportance):
         sentence_pairs = torch.cat((bos_copies, si_copies, eos_copies,
                                     eos_copies, sj_masked_copies, eos_copies), 1)
 
-        # masked_lm_labels = torch.cat((torch.zeros(sj_len, si_len + 3).fill_(-1).long(),
-        #                               sj_masked_labels,
-        #                               torch.zeros(sj_len, 1).fill_(-1).long())
-        #                              , 1).to(self.device)
-
         loss_mask = torch.cat((torch.zeros(sj_len, si_len + 3).bool(),
                                mask,
                                torch.zeros(sj_len, 1).bool()), 1)
 
-        masked_lm_labels = torch.zeros_like(loss_mask).fill_(-1).long().masked_scatter(loss_mask, sj_copies)
+        masked_lm_labels = torch.zeros_like(loss_mask).fill_(-1).long().masked_scatter_(loss_mask, sj_copies)
 
         return sentence_pairs.to(self.device), masked_lm_labels.to(self.device), loss_mask.to(self.device)
