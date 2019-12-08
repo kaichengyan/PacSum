@@ -35,6 +35,7 @@ class PacSumExtractorWithImportance:
 
             # edge_scores = self._calculate_similarity_matrix(article)
             article_importance = self._calculate_all_sentence_importance(article)
+            print(article_importance)
             ids: List[int] = self._select_tops(article_importance)
             summary = list(map(lambda x: article[x], ids))
             print(summary, abstract)
@@ -230,8 +231,8 @@ class PacSumExtractorWithImportanceV0(PacSumExtractorWithImportance):
                 # What is P_BERT(s_j | s_i)
                 # Is the NLL loss just -sum(log P(w_l | s_i + s_j - w_l))?
                 with torch.no_grad():
-                    loss = self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0].cpu()
-                s_importance += loss
+                    loss = -self.masked_lm(sentence_pairs, masked_lm_labels=masked_lm_labels)[0].cpu()
+                s_importance += loss.item()
         return s_importance
 
     def _generate_batch(self, si: str, sj: str) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
