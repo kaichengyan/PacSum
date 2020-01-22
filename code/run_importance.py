@@ -15,7 +15,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    extractor = PacSumExtractorWithImportanceV0(device=args.device)
+    extractor = PacSumExtractorWithImportanceV3(3, 3, device=args.device)
 
     # tune
     if args.mode == 'tune':
