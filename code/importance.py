@@ -67,9 +67,9 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
     def __init__(self,
                  num_pi_samples: int,
                  num_pj_samples: int,
-                 pi_len: int = 5,
-                 pj_len: int = 5,
-                 window_size: int = 32,
+                 pi_len: int = 3,
+                 pj_len: int = 3,
+                 window_size: int = 64,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.window_size: int = window_size
@@ -87,10 +87,10 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         :param article: The article that si is in
         :return: The importance of sentence si
         """
-        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True) for sent in article]
+        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True)[1:-1] for sent in article]
         tokenized_article: List[int] = list(np.concatenate(tokenized_sentences))
 
-        si_tokenized = tokenized_sentences[i]
+        si_tokenized = tokenized_sentences[i][1:-1]
         si_len = len(si_tokenized)
         # relative to article
         si_left = sum(len(sent) for sent in tokenized_sentences[:i])
@@ -142,7 +142,8 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             unmasked_list.append(unmasked)
             masked_list.append(masked)
 
-            labels = torch.full_like(di, -100).long().masked_scatter_(mask_pj, di)
+            labels = di.masked_fill(~mask_pj, -100)
+            # labels = torch.full_like(di, -100).long().masked_scatter_(mask_pj, di)
             labels_list.append(labels)
 
 
