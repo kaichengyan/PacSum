@@ -15,9 +15,8 @@ class PacSumExtractorWithImportance:
         super().__init__()
         self.extract_num: int = extract_num
         self.device: str = device
-        self.masked_lm: RobertaForMaskedLM = RobertaForMaskedLM.from_pretrained('roberta-base').to(device)
-        self.tokenizer: RobertaTokenizer = RobertaTokenizer.from_pretrained('roberta-base')
-
+        self.masked_lm: RobertaForMaskedLM = RobertaForMaskedLM.from_pretrained('distilroberta-base').to(device)
+        self.tokenizer: RobertaTokenizer = RobertaTokenizer.from_pretrained('distilroberta-base')
 
     def extract_summary(self, data_iterator: Iterator[Tuple[List[str], List[str]]]) -> None:
         summaries: List[List[str]] = []
@@ -119,7 +118,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             s_importance += (loss_pi_masked - loss_pi_unmasked)
         return s_importance
 
-    def _generate_batch(self, di: List[int], pi_left: int)\
+    def _generate_batch(self, di: List[int], pi_left: int) \
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         unmasked_list, masked_list, labels_list = [], [], []
         di_len = len(di)
@@ -146,7 +145,6 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             # labels = torch.full_like(di, -100).long().masked_scatter_(mask_pj, di)
             labels_list.append(labels)
 
-
         unmasked_batch = torch.stack(unmasked_list, dim=0)
         masked_batch = torch.stack(masked_list, dim=0)
 
@@ -161,8 +159,8 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         labels_batch = torch.cat((ignore_copies, torch.stack(labels_list, dim=0), ignore_copies), 1)
 
         assert unmasked_batch.shape == masked_batch.shape == labels_batch.shape
-        return unmasked_batch.to(self.device),\
-               masked_batch.to(self.device),\
+        return unmasked_batch.to(self.device), \
+               masked_batch.to(self.device), \
                labels_batch.to(self.device)
 
 
@@ -281,7 +279,7 @@ class PacSumExtractorWithImportanceV1(PacSumExtractorWithImportance):
         w = self.window_size
         si = article[i]
         window_min, window_max = max(0, i - w), min(len(article) - 1, i + w)
-        window = article[window_min:window_max+1]
+        window = article[window_min:window_max + 1]
 
         s_importance = 0
         # TODO:
