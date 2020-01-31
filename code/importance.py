@@ -23,8 +23,7 @@ class PacSumExtractorWithImportance:
         summaries: List[List[str]] = []
         references: List[List[List[str]]] = []
 
-        for idx, (article, abstract) in enumerate(itertools.islice(data_iterator, 5)):
-            # FIXME: testing on 5 samples for now
+        for idx, (article, abstract) in enumerate(data_iterator):
             print("Processing article", idx, "...")
             if len(article) <= self.extract_num:
                 summaries.append(article)
@@ -140,7 +139,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             unmasked_list.append(unmasked)
             masked_list.append(masked)
 
-            labels = di.masked_fill(~mask_pj, -1)
+            labels = di.masked_fill(~mask_pj, -100)
             # labels = torch.full_like(di, -100).long().masked_scatter_(mask_pj, di)
             labels_list.append(labels)
 
@@ -154,7 +153,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         unmasked_batch = torch.cat((bos_copies, unmasked_batch, eos_copies), 1)
         masked_batch = torch.cat((bos_copies, masked_batch, eos_copies), 1)
 
-        ignore_copies = torch.full_like(bos_copies, -1)
+        ignore_copies = torch.full_like(bos_copies, -100)
         labels_batch = torch.cat((ignore_copies, torch.stack(labels_list, dim=0), ignore_copies), 1)
 
         assert unmasked_batch.shape == masked_batch.shape == labels_batch.shape
