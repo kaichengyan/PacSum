@@ -114,7 +114,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             with torch.no_grad():
                 loss_pi_unmasked = self.masked_lm(unmasked_batch, masked_lm_labels=labels_batch)[0]
                 loss_pi_masked = self.masked_lm(masked_batch, masked_lm_labels=labels_batch)[0]
-            s_importance += (loss_pi_masked - loss_pi_unmasked)
+            s_importance += (loss_pi_masked.item() - loss_pi_unmasked.item())
         return s_importance
 
     def _generate_batch(self, di: List[int], pi_left: int) \
