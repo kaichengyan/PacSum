@@ -1,5 +1,6 @@
 from typing import List, Tuple, Iterator
 
+import itertools
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -22,10 +23,8 @@ class PacSumExtractorWithImportance:
         summaries: List[List[str]] = []
         references: List[List[List[str]]] = []
 
-        for idx, (article, abstract) in enumerate(data_iterator):
-            # FIXME: testing on 3 samples for now
-            if idx >= 3:
-                break
+        for idx, (article, abstract) in enumerate(itertools.islice(data_iterator, 5)):
+            # FIXME: testing on 5 samples for now
             print("Processing article", idx, "...")
             if len(article) <= self.extract_num:
                 summaries.append(article)
@@ -66,9 +65,9 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
     def __init__(self,
                  num_pi_samples: int,
                  num_pj_samples: int,
-                 pi_len: int = 5,
-                 pj_len: int = 5,
-                 window_size: int = 128,
+                 pi_len: int = 7,
+                 pj_len: int = 7,
+                 window_size: int = 256,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.window_size: int = window_size
@@ -86,10 +85,10 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         :param article: The article that si is in
         :return: The importance of sentence si
         """
-        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True)[1:-1] for sent in article]
+        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True) for sent in article]
         tokenized_article: List[int] = list(np.concatenate(tokenized_sentences))
 
-        si_tokenized = tokenized_sentences[i][1:-1]
+        si_tokenized = tokenized_sentences[i]
         si_len = len(si_tokenized)
         # relative to article
         si_left = sum(len(sent) for sent in tokenized_sentences[:i])
