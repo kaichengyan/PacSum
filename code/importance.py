@@ -88,14 +88,13 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True) for sent in article]
         tokenized_article: List[int] = list(np.concatenate(tokenized_sentences))
 
-        si_tokenized = tokenized_sentences[i]
+        si_tokenized = tokenized_sentences[i][:]
         si_len = len(si_tokenized)
         # relative to article
         si_left = sum(len(sent) for sent in tokenized_sentences[:i])
         si_right = si_left + si_len
 
-        # should refer to the same token
-        assert tokenized_sentences[i][0] == tokenized_article[si_left]
+        assert si_tokenized == tokenized_sentences[i] == tokenized_article[si_left:si_left + si_len]
 
         # want window_size window around si
         half_size = (self.window_size - si_len) // 2
@@ -105,7 +104,8 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         di = tokenized_article[di_left:di_right]
 
         s_importance = 0
-        for i in range(self.num_pi_samples):
+        for ii in range(self.num_pi_samples):
+            assert si_tokenized == tokenized_sentences[i] == tokenized_article[si_left:si_left + si_len]
             # local to si
             pi_left_local = np.random.randint(max(1, si_len - self.pi_len + 1))
             # local to di
@@ -122,7 +122,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         unmasked_list, masked_list, labels_list = [], [], []
         di_len = len(di)
         di: torch.Tensor = torch.tensor(di)
-        pi_mask_range = torch.arange(pi_left, pi_left + self.pi_len).long()
+        pi_mask_range = torch.arange(pi_left, min(di_len, pi_left + self.pi_len)).long()
         for j in range(self.num_pi_samples):
             # possible range of pj_left: [0, pi_left - pj_len] U [pi_right, di_len - pj_len]
             pj_left_range = list(np.arange(pi_left - self.pj_len + 1)) \
