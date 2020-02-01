@@ -24,14 +24,13 @@ class PacSumExtractorWithImportance:
         references: List[List[List[str]]] = []
 
         for idx, (article, abstract) in enumerate(data_iterator):
-            print("Processing article", idx, "...")
             if len(article) <= self.extract_num:
                 summaries.append(article)
                 references.append([abstract])
                 continue
 
             # edge_scores = self._calculate_similarity_matrix(article)
-            article_importance = self._calculate_all_sentence_importance(article)
+            article_importance = self._calculate_all_sentence_importance(idx, article)
             print(article_importance)
             ids: List[int] = self._select_tops(article_importance)
             summary = list(map(lambda x: article[x], ids))
@@ -50,9 +49,9 @@ class PacSumExtractorWithImportance:
         extracted = [item[0] for item in id_importance_pairs[:self.extract_num]]
         return extracted
 
-    def _calculate_all_sentence_importance(self, article: List[str]) -> List[float]:
+    def _calculate_all_sentence_importance(self, article_idx: int, article: List[str]) -> List[float]:
         all_importances = []
-        for idx in tqdm(range(len(article))):
+        for idx in tqdm(range(len(article)), desc=f'Article {article_idx}'):
             all_importances.append(self._calculate_sentence_importance(idx, article))
         return all_importances
 
