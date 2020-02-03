@@ -1,4 +1,5 @@
 import argparse
+import yaml
 
 from data_iterator import Dataset
 from importance import *
@@ -10,26 +11,33 @@ if __name__ == '__main__':
                         default='../data/NYT/nyt.validation.h5df')
     parser.add_argument('--test_data_file', type=str, help='data for testing',
                         default='../data/NYT/nyt.validation.h5df')
-    parser.add_argument('--device', type=str, help='device to use', default='cuda')
+    parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--extract_num', type=int, default=3)
+    parser.add_argument('--num_pi_samples', type=int, default=3)
+    parser.add_argument('--num_pj_samples', type=int, default=3)
+    parser.add_argument('--pi_len', type=int, default=3)
+    parser.add_argument('--pj_len', type=int, default=3)
+    parser.add_argument('--window_size', type=int, default=256)
+    parser.add_argument('-c', '--config', type=str, help='yaml config file')
 
     args = parser.parse_args()
+
+    if args.config:
+        with open(args.config, 'r') as f:
+            configs = yaml.load(f, Loader=yaml.SafeLoader)
+            args.__dict__.update(configs)
+
     print(args)
 
-    extractor = PacSumExtractorWithImportanceV3(extract_num=3,
-                                                num_pi_samples=3,
-                                                num_pj_samples=3,
-                                                pi_len=7,
-                                                pj_len=7,
-                                                window_size=256,
+    extractor = PacSumExtractorWithImportanceV3(extract_num=args.extract_num,
+                                                num_pi_samples=args.num_pi_samples,
+                                                num_pj_samples=args.num_pj_samples,
+                                                pi_len=args.pi_len,
+                                                pj_len=args.pj_len,
+                                                window_size=args.window_size,
                                                 device=args.device)
 
-    # tune
-    if args.mode == 'tune':
-        tune_dataset = Dataset(args.tune_data_file)
-        tune_dataset_iterator = tune_dataset.iterate_once_doc_importance()
-        # extractor.tune_hparams(tune_dataset_iterator)
 
-    # test
-    test_dataset = Dataset(args.test_data_file)
-    test_dataset_iterator = test_dataset.iterate_once_doc_importance()
-    extractor.extract_summary(test_dataset_iterator)
+    dataset = Dataset(args.test_data_file)
+    dataset_iterator = dataset.iterate_once_doc_importance()
+    extractor.extract_summary(dataset_iterator)

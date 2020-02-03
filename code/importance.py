@@ -121,7 +121,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         di_len = len(di)
         di: torch.Tensor = torch.tensor(di)
         pi_mask_range = torch.arange(pi_left, min(di_len, pi_left + self.pi_len)).long()
-        for j in range(self.num_pi_samples):
+        for j in range(self.num_pj_samples):
             # possible range of pj_left: [0, pi_left - pj_len] U [pi_right, di_len - pj_len]
             pj_left_range = list(np.arange(pi_left - self.pj_len + 1)) \
                             + list(np.arange(pi_left + self.pi_len, di_len - self.pj_len + 1))
