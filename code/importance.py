@@ -1,3 +1,4 @@
+import re
 from typing import List, Tuple, Iterator
 
 import itertools
@@ -61,12 +62,23 @@ class PacSumExtractorWithImportance:
 
     def _calculate_all_sentence_importance(self, article_idx: int, article: List[str]) -> List[float]:
         all_importances = []
+        article = [self._detokenize(s) for s in article]
         for idx in tqdm(range(len(article)), desc=f'Article {article_idx}'):
             all_importances.append(self._calculate_sentence_importance(idx, article))
         return all_importances
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         raise NotImplementedError
+
+    def _detokenize(self, text):
+        step1 = text.replace("`` ", '"').replace(" ''", '"').replace('. . .', '...')
+        step2 = step1.replace(" ( ", " (").replace(" ) ", ") ")
+        step3 = re.sub(r' ([.,:;?!%]+)([ \'"`])', r"\1\2", step2)
+        step4 = re.sub(r' ([.,:;?!%]+)$', r"\1", step3)
+        step5 = step4.replace(" '", "'").replace(" n't", "n't").replace(
+            "can not", "cannot")
+        step6 = step5.replace(" ` ", " '")
+        return step6.strip()
 
 
 class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
