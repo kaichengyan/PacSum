@@ -1,7 +1,7 @@
 extract_num: 3
-num_pi_samples: 5
-num_pj_samples: 5
+num_pi_samples: 3
+num_pj_samples: 3
 pi_len: 7
 pj_len: 7
 window_size: 400
-device: 'cuda'
+device: 'cpu'

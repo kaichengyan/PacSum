@@ -23,7 +23,16 @@ class PacSumExtractorWithImportance:
         summaries: List[List[str]] = []
         references: List[List[List[str]]] = []
 
+        # randomly sample 100 articles to evaluate on val set
+        val_set_size = 5531
+        eval_subset_size = 100
+        val_indices = set(np.random.choice(np.arange(val_set_size),
+                                           eval_subset_size,
+                                           replace=False))
+
         for idx, (article, abstract) in enumerate(data_iterator):
+            if idx not in val_indices:
+                continue
             if len(article) <= self.extract_num:
                 summaries.append(article)
                 references.append([abstract])
@@ -40,6 +49,7 @@ class PacSumExtractorWithImportance:
             references.append([abstract])
 
         result = evaluate_rouge(summaries, references, remove_temp=True, rouge_args=[])
+        print(result)
 
     def _select_tops(self, article_importance: List[float]) -> List[int]:
         id_importance_pairs: List[Tuple[int, float]] = []
