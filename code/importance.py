@@ -20,7 +20,7 @@ class PacSumExtractorWithImportance:
         self.masked_lm: RobertaForMaskedLM = RobertaForMaskedLM.from_pretrained('distilroberta-base').to(device)
         self.tokenizer: RobertaTokenizer = RobertaTokenizer.from_pretrained('distilroberta-base')
 
-    def extract_summary(self, data_iterator: Iterator[Tuple[List[str], List[str]]]) -> None:
+    def extract_summary(self, data_iterator: Iterator[Tuple[List[str], List[str]]], print_summaries=False) -> None:
         summaries: List[List[str]] = []
         references: List[List[List[str]]] = []
 
@@ -41,16 +41,16 @@ class PacSumExtractorWithImportance:
 
             # edge_scores = self._calculate_similarity_matrix(article)
             article_importance = self._calculate_all_sentence_importance(idx, article)
-            print(article_importance)
             ids: List[int] = self._select_tops(article_importance)
             summary = list(map(lambda x: article[x], ids))
-            print(summary, abstract)
+            if print_summaries:
+                print(summary, abstract)
 
             summaries.append(summary)
             references.append([abstract])
 
         result = evaluate_rouge(summaries, references, remove_temp=True, rouge_args=[])
-        print(result)
+        return result
 
     def _select_tops(self, article_importance: List[float]) -> List[int]:
         id_importance_pairs: List[Tuple[int, float]] = []
@@ -117,7 +117,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         assert si_tokenized == tokenized_sentences[i] == tokenized_article[si_left:si_left + si_len]
 
         # want window_size window around si
-        half_size = (self.window_size - si_len) // 2
+        half_size = max(0, (self.window_size - si_len)) // 2
         # relative to article
         di_left = max(0, si_left - half_size)
         di_right = min(si_right + half_size, len(tokenized_article))
@@ -141,7 +141,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         unmasked_list, masked_list, labels_list = [], [], []
         di_len = len(di)
-        di: torch.Tensor = torch.tensor(di)
+        di = torch.tensor(di)
         pi_mask_range = torch.arange(pi_left, min(di_len, pi_left + self.pi_len)).long()
         for j in range(self.num_pj_samples):
             # possible range of pj_left: [0, pi_left - pj_len] U [pi_right, di_len - pj_len]
