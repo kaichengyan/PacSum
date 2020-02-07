@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 from transformers import RobertaForMaskedLM, RobertaTokenizer
 
-from utils import evaluate_rouge
+from utils import evaluate_rouge, masked_lm_sum_prob
 
 
 class PacSumExtractorWithImportance:
@@ -62,23 +62,13 @@ class PacSumExtractorWithImportance:
 
     def _calculate_all_sentence_importance(self, article_idx: int, article: List[str]) -> List[float]:
         all_importances = []
-        article = [self._detokenize(s) for s in article]
+        article = [RobertaTokenizer.clean_up_tokenization(s) for s in article]
         for idx in tqdm(range(len(article)), desc=f'Article {article_idx}'):
             all_importances.append(self._calculate_sentence_importance(idx, article))
         return all_importances
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         raise NotImplementedError
-
-    def _detokenize(self, text):
-        step1 = text.replace("`` ", '"').replace(" ''", '"').replace('. . .', '...')
-        step2 = step1.replace(" ( ", " (").replace(" ) ", ") ")
-        step3 = re.sub(r' ([.,:;?!%]+)([ \'"`])', r"\1\2", step2)
-        step4 = re.sub(r' ([.,:;?!%]+)$', r"\1", step3)
-        step5 = step4.replace(" '", "'").replace(" n't", "n't").replace(
-            "can not", "cannot")
-        step6 = step5.replace(" ` ", " '")
-        return step6.strip()
 
 
 class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
@@ -88,6 +78,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
                  pi_len: int = 7,
                  pj_len: int = 7,
                  window_size: int = 256,
+                 use_log_prob: bool = False,
                  *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.window_size: int = window_size
@@ -96,6 +87,7 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
         # BERT requires pi_length + pj_length < 0.15 * window_size
         self.pi_len: int = pi_len
         self.pj_len: int = pj_len
+        self.use_log_prob: bool = use_log_prob
 
     def _calculate_sentence_importance(self, i: int, article: List[str]) -> float:
         """
@@ -132,9 +124,18 @@ class PacSumExtractorWithImportanceV3(PacSumExtractorWithImportance):
             pi_left = pi_left_local + si_left - di_left
             unmasked_batch, masked_batch, labels_batch = self._generate_batch(di, pi_left)
             with torch.no_grad():
-                loss_pi_unmasked = self.masked_lm(unmasked_batch, masked_lm_labels=labels_batch)[0]
-                loss_pi_masked = self.masked_lm(masked_batch, masked_lm_labels=labels_batch)[0]
-            s_importance += (loss_pi_masked.item() - loss_pi_unmasked.item())
+                loss_unmasked, scores_unmasked = \
+                    self.masked_lm(unmasked_batch, masked_lm_labels=labels_batch)
+                loss_masked, scores_masked = \
+                    self.masked_lm(masked_batch, masked_lm_labels=labels_batch)
+                if self.use_log_prob:
+                    # use native nll loss value
+                    s_importance += (loss_masked.item() - loss_unmasked.item())
+                else:
+                    # calculate sum of probs manually
+                    sum_prob_masked = masked_lm_sum_prob(scores_masked, labels_batch)
+                    sum_prob_unmasked = masked_lm_sum_prob(scores_unmasked, labels_batch)
+                    s_importance += (sum_prob_masked - sum_prob_unmasked)
         return s_importance
 
     def _generate_batch(self, di: List[int], pi_left: int) \

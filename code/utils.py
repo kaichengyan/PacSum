@@ -1,3 +1,4 @@
+import torch
 from pyrouge import Rouge155
 import os, shutil, random, string
 
@@ -92,3 +93,15 @@ def join_words(words, separator=" "):
 
     """
     return separator.join(words)
+
+
+def masked_lm_sum_prob(prediction_scores: torch.Tensor,
+                       masked_lm_labels: torch.Tensor) -> torch.Tensor:
+    pred_probs = torch.softmax(prediction_scores, dim=2)
+    prob_sum = torch.tensor(0.)
+    for i in range(pred_probs.shape[0]):
+        for j in range(pred_probs.shape[1]):
+            label = masked_lm_labels[i][j]
+            if label != -100:
+                prob_sum += pred_probs[i][j][label]
+    return prob_sum
