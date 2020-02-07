@@ -5,3 +5,4 @@ pi_len: 7
 pj_len: 7
 window_size: 400
 device: 'cpu'
+use_log_prob: false
