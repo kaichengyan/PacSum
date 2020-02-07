@@ -1,6 +1,9 @@
+import os
+import random
+import string
+
 import torch
 from pyrouge import Rouge155
-import os, shutil, random, string
 
 from gensim_preprocess import preprocess_documents
 
@@ -14,7 +17,7 @@ def evaluate_rouge(summaries, references, remove_temp=False, rouge_args=[]):
         rouge_args: [string]. A list of arguments to pass to the ROUGE CLI.
     '''
     temp_dir = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-    temp_dir = os.path.join("temp",temp_dir)
+    temp_dir = os.path.join("temp", temp_dir)
     print(temp_dir)
     system_dir = os.path.join(temp_dir, 'system')
     model_dir = os.path.join(temp_dir, 'model')
@@ -30,7 +33,7 @@ def evaluate_rouge(summaries, references, remove_temp=False, rouge_args=[]):
         for j, candidate in enumerate(candidates):
             candidate_fn = '%i.%i.txt' % (i, j)
             with open(os.path.join(model_dir, candidate_fn), 'w') as f:
-                #print(candidate)
+                # print(candidate)
                 f.write('\n'.join(candidate))
 
         with open(os.path.join(system_dir, summary_fn), 'w') as f:
@@ -43,18 +46,19 @@ def evaluate_rouge(summaries, references, remove_temp=False, rouge_args=[]):
     rouge.system_filename_pattern = '(\d+).txt'
     rouge.model_filename_pattern = '#ID#.\d+.txt'
 
-    #rouge_args = '-c 95 -2 -1 -U -r 1000 -n 4 -w 1.2 -a'
-    #output = rouge.convert_and_evaluate(rouge_args=rouge_args)
+    # rouge_args = '-c 95 -2 -1 -U -r 1000 -n 4 -w 1.2 -a'
+    # output = rouge.convert_and_evaluate(rouge_args=rouge_args)
     output = rouge.convert_and_evaluate()
 
     r = rouge.output_to_dict(output)
     print(output)
-    #print(r)
+    # print(r)
 
     # remove the created temporary files
-    #if remove_temp:
+    # if remove_temp:
     #    shutil.rmtree(temp_dir)
     return r
+
 
 def clean_text_by_sentences(text):
     """Tokenize a given text into sentences, applying filters and lemmatize them.

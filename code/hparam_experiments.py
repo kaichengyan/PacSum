@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 import yaml
 
 from data_iterator import Dataset
-from importance import PacSumExtractorWithImportanceV3
+from models.phrase_sample_model import PhraseSampleImportanceModel
 
 
 def product_dict(d: Dict[Any, List[Any]]):
@@ -23,5 +23,5 @@ if __name__ == '__main__':
     for c in configs:
         print(c)
         dataset_iterator = dataset.iterate_once_doc_importance()
-        extractor = PacSumExtractorWithImportanceV3(**c)
+        extractor = PhraseSampleImportanceModel(**c)
         result = extractor.extract_summary(dataset_iterator)

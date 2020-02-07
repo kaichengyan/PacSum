@@ -1,8 +1,9 @@
 import argparse
+
 import yaml
 
 from data_iterator import Dataset
-from importance import *
+from models.phrase_sample_model import PhraseSampleImportanceModel
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -29,14 +30,13 @@ if __name__ == '__main__':
 
     print(args)
 
-    extractor = PacSumExtractorWithImportanceV3(extract_num=args.extract_num,
-                                                num_pi_samples=args.num_pi_samples,
-                                                num_pj_samples=args.num_pj_samples,
-                                                pi_len=args.pi_len,
-                                                pj_len=args.pj_len,
-                                                window_size=args.window_size,
-                                                device=args.device)
-
+    extractor = PhraseSampleImportanceModel(extract_num=args.extract_num,
+                                            num_pi_samples=args.num_pi_samples,
+                                            num_pj_samples=args.num_pj_samples,
+                                            pi_len=args.pi_len,
+                                            pj_len=args.pj_len,
+                                            window_size=args.window_size,
+                                            device=args.device)
 
     dataset = Dataset(args.test_data_file)
     dataset_iterator = dataset.iterate_once_doc_importance()
