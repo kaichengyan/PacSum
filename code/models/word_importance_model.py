@@ -1,3 +1,4 @@
+import heapq
 from typing import List, Dict, Tuple
 
 import numpy as np
@@ -55,6 +56,8 @@ class WordImportanceModel(PacSumExtractorWithImportance):
             if token not in word_iotas:
                 word_iotas[token] = \
                     self._calculate_single_word_importance(token, windows)
+        highest_score_tokens = heapq.nlargest(10, word_iotas, key=word_iotas.get)
+        print(self.tokenizer.convert_ids_to_tokens(highest_score_tokens))
         return word_iotas
 
     def _calculate_single_word_importance(self,
