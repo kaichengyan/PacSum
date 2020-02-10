@@ -57,7 +57,9 @@ class WordImportanceModel(PacSumExtractorWithImportance):
                 word_iotas[token] = \
                     self._calculate_single_word_importance(token, windows)
         highest_score_tokens = heapq.nlargest(10, word_iotas, key=word_iotas.get)
+        lowest_score_tokens = heapq.nsmallest(10, word_iotas, key=word_iotas.get)
         print(self.tokenizer.convert_ids_to_tokens(highest_score_tokens))
+        print(self.tokenizer.convert_ids_to_tokens(lowest_score_tokens))
         return word_iotas
 
     def _calculate_single_word_importance(self,
@@ -98,6 +100,7 @@ class WordImportanceModel(PacSumExtractorWithImportance):
             unmasked_list.append(unmasked)
             masked_list.append(masked)
             labels_list.append(labels)
+
         unmasked_batch = torch.stack(unmasked_list, dim=0)
         masked_batch = torch.stack(masked_list, dim=0)
 
