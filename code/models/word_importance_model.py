@@ -29,7 +29,7 @@ class WordImportanceModel(PacSumExtractorWithImportance):
         word_imps = self._calculate_all_word_importance(article_idx,
                                                         tokenized_article,
                                                         tokenized_windows)
-        for idx in tqdm(range(len(article)), desc=f'Article {article_idx}'):
+        for idx in range(len(article)):
             all_importances.append(self._calculate_single_sentence_importance(tokenized_sentences[idx],
                                                                               word_imps))
         return all_importances
@@ -51,10 +51,10 @@ class WordImportanceModel(PacSumExtractorWithImportance):
                                        article: List[int],
                                        windows: List[List[int]]) -> Dict[int, float]:
         word_iotas = dict()
-        for token in tqdm(article, desc=f"Word Imp Art. {article_idx}"):
+        for token in tqdm(article, desc=f"Art. {article_idx}"):
             if token not in word_iotas:
-                word_iotas[token] = self._calculate_single_word_importance(token,
-                                                                           windows)
+                word_iotas[token] = \
+                    self._calculate_single_word_importance(token, windows)
         return word_iotas
 
     def _calculate_single_word_importance(self,
