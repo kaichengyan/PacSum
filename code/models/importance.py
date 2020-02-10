@@ -24,7 +24,7 @@ class PacSumExtractorWithImportance:
 
         # randomly sample 100 articles to evaluate on val set
         val_set_size = 5531
-        eval_subset_size = 100
+        eval_subset_size = 10
         val_indices = set(np.random.choice(np.arange(val_set_size),
                                            eval_subset_size,
                                            replace=False))
