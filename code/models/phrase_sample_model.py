@@ -5,11 +5,16 @@ import torch
 from tqdm import tqdm
 from transformers import RobertaTokenizer
 
-from models.importance import PacSumExtractorWithImportance
+from models.base_model import PacSumExtractorWithImportance
 from utils import masked_lm_sum_prob
 
 
-class PhraseSampleImportanceModel(PacSumExtractorWithImportance):
+class PhraseSampleModel(PacSumExtractorWithImportance):
+    """
+    Importance model v3
+    iota3(si | D) = sum_pi sum_pj (log P(pj | D(si)) - log P(pj | D(si) - pi))
+    """
+
     def __init__(self,
                  num_pi_samples: int,
                  num_pj_samples: int,

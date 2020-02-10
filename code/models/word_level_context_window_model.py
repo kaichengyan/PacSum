@@ -6,10 +6,10 @@ import torch
 from tqdm import tqdm
 from transformers import RobertaTokenizer
 
-from models.importance import PacSumExtractorWithImportance
+from models.base_model import PacSumExtractorWithImportance
 
 
-class WordImportanceModel(PacSumExtractorWithImportance):
+class WordLevelContextWindowModel(PacSumExtractorWithImportance):
     def __init__(self,
                  num_pj_samples: int,
                  pj_len: int,
