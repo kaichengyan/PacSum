@@ -83,8 +83,11 @@ class WordImportanceModel(PacSumExtractorWithImportance):
         c = torch.tensor(context_window)
         unmasked_list, masked_list, labels_list = [], [], []
         for k in range(self.num_pj_samples):
-            pj_left = np.random.choice(np.arange(len(context_window) - self.pj_len))
-            pj_mask_range = torch.arange(pj_left, pj_left + self.pj_len).long()
+            pj_left = np.random.randint(max(1, len(context_window) - self.pj_len))
+            pj_mask_range = torch.arange(
+                pj_left,
+                min(len(context_window), pj_left + self.pj_len)
+            ).long()
             mask_pj = torch.zeros_like(c).bool().index_fill_(0, pj_mask_range, True)
             mask_w = c.eq(word)
 
