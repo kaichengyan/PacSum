@@ -58,7 +58,7 @@ class PacSumExtractorWithImportance:
         extracted = [item[0] for item in id_importance_pairs[:self.extract_num]]
         return extracted
 
-    def _calculate_article_importance(self, i: int, article: List[str]) -> float:
+    def _calculate_article_importance(self, i: int, article: List[str]) -> List[float]:
         raise NotImplementedError
 
 
