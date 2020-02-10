@@ -72,7 +72,7 @@ class WordImportanceModel(PacSumExtractorWithImportance):
                         self.masked_lm(unmasked_batch, masked_lm_labels=labels_batch)
                     loss_masked, scores_masked = \
                         self.masked_lm(masked_batch, masked_lm_labels=labels_batch)
-                iota += loss_unmasked - loss_masked
+                iota += loss_masked - loss_unmasked
         return iota
 
     def _generate_batch(self, context_window: List[int], word: int) \
@@ -84,13 +84,13 @@ class WordImportanceModel(PacSumExtractorWithImportance):
             pj_mask_range = torch.arange(pj_left, pj_left + self.pj_len).long()
             mask_pj = torch.zeros_like(c).bool().index_fill_(0, pj_mask_range, True)
             mask_w = c.eq(word)
+
             unmasked = c.masked_fill(mask_pj, self.tokenizer.mask_token_id)
-            # also mask out pi, by filling mask_token_id's in mask_pi locations
             masked = c.masked_fill(mask_w, self.tokenizer.mask_token_id)
+            labels = c.masked_fill(~mask_pj, -100)
+
             unmasked_list.append(unmasked)
             masked_list.append(masked)
-            labels = c.masked_fill(~mask_pj, -100)
-            # labels = torch.full_like(di, -100).long().masked_scatter_(mask_pj, di)
             labels_list.append(labels)
         unmasked_batch = torch.stack(unmasked_list, dim=0)
         masked_batch = torch.stack(masked_list, dim=0)
