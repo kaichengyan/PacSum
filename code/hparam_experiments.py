@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 import yaml
 
 from data_iterator import Dataset
-from models.phrase_sample_model import PhraseSampleImportanceModel
+from models.phrase_sample_model import PhraseSampleModel
 
 
 def product_dict(d: Dict[Any, List[Any]]):
@@ -13,7 +13,7 @@ def product_dict(d: Dict[Any, List[Any]]):
 
 
 if __name__ == '__main__':
-    with open('experiment_config.yaml', 'r') as f:
+    with open('configs/exp_phrase_sample.yaml', 'r') as f:
         config_file = yaml.load(f, Loader=yaml.SafeLoader)
 
     configs = product_dict(config_file)
@@ -23,5 +23,5 @@ if __name__ == '__main__':
     for c in configs:
         print(c)
         dataset_iterator = dataset.iterate_once_doc_importance()
-        extractor = PhraseSampleImportanceModel(**c)
+        extractor = PhraseSampleModel(**c)
         result = extractor.extract_summary(dataset_iterator)
