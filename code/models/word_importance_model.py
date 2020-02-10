@@ -92,7 +92,7 @@ class WordImportanceModel(PacSumExtractorWithImportance):
             mask_w = c.eq(word)
 
             unmasked = c.masked_fill(mask_pj, self.tokenizer.mask_token_id)
-            masked = c.masked_fill(mask_w, self.tokenizer.mask_token_id)
+            masked = unmasked.masked_fill(mask_w, self.tokenizer.mask_token_id)
             labels = c.masked_fill(~mask_pj, -100)
 
             unmasked_list.append(unmasked)
