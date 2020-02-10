@@ -30,11 +30,20 @@ class PhraseSampleImportanceModel(PacSumExtractorWithImportance):
     def _calculate_article_importance(self, article_idx: int, article: List[str]) -> List[float]:
         all_importances = []
         article = [RobertaTokenizer.clean_up_tokenization(s) for s in article]
+
+        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True) for sent in article]
+        tokenized_article: List[int] = list(np.concatenate(tokenized_sentences))
+
         for idx in tqdm(range(len(article)), desc=f'Article {article_idx}'):
-            all_importances.append(self._calculate_single_sentence_importance(idx, article))
+            all_importances.append(self._calculate_single_sentence_importance(idx,
+                                                                              tokenized_sentences,
+                                                                              tokenized_article))
         return all_importances
 
-    def _calculate_single_sentence_importance(self, i: int, article: List[str]) -> float:
+    def _calculate_single_sentence_importance(self,
+                                              i: int,
+                                              tokenized_sentences: List[List[int]],
+                                              tokenized_article: List[int]) -> float:
         """
         Sample k phrases pi from si, sample m phrases pj from the window of si Di,
         iota3(si | D) = sum_pi sum_pj (log P(pj | D(si)) - log P(pj | D(si) - pi))
@@ -42,9 +51,6 @@ class PhraseSampleImportanceModel(PacSumExtractorWithImportance):
         :param article: The article that si is in
         :return: The importance of sentence si
         """
-        tokenized_sentences = [self.tokenizer.encode(sent, add_prefix_space=True) for sent in article]
-        tokenized_article: List[int] = list(np.concatenate(tokenized_sentences))
-
         si_tokenized = tokenized_sentences[i][:]
         si_len = len(si_tokenized)
         # relative to article
