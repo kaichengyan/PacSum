@@ -28,8 +28,10 @@ class PacSumExtractorWithImportance:
                                            replace=False))
 
         for idx, (article, abstract) in enumerate(data_iterator):
-            if idx not in val_indices:
-                continue
+            #if idx not in val_indices:
+            #    continue
+            if idx >= 2:
+                break
             if len(article) <= self.extract_num:
                 summaries.append(article)
                 references.append([abstract])
