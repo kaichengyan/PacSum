@@ -1,6 +1,6 @@
 extract_num: 3
-num_pj_samples: 3
+num_pj_samples: 10
 pj_len: 3
 window_size: 128
-device: 'cpu'
+device: 'cuda'
 #use_log_prob: false

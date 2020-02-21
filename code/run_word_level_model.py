@@ -32,4 +32,4 @@ if __name__ == '__main__':
 
     dataset = Dataset(args.test_data_file)
     dataset_iterator = dataset.iterate_once_doc_importance()
-    extractor.extract_summary(dataset_iterator)
+    extractor.extract_summary(dataset_iterator, print_summaries=True)
