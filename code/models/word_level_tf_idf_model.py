@@ -58,18 +58,17 @@ class WordLevelTfIdfModel(PacSumExtractorWithImportance):
                                    article: List[int]) -> Dict[int, float]:
         word_tf_idf = dict()
         counter = collections.Counter(article)
-        for token in tqdm(set(article), desc=f'Art. {article_idx}'):
-            tf = word_tf_idf[token] = 0.5 + 0.5 * np.log(counter[token] / max(counter))
+        for token in set(article):
+            tf = 0.5 + 0.5 * counter[token] / max(counter)
             word_tf_idf[token] = tf * self.idf[token]
-
-        highest_score_tokens = heapq.nlargest(30, word_tf_idf, key=word_tf_idf.get)
-        lowest_score_tokens = heapq.nsmallest(30, word_tf_idf, key=word_tf_idf.get)
-        print('Highest:')
-        for tok in highest_score_tokens:
-            print(self.tokenizer.convert_ids_to_tokens(highest_score_tokens),
-                  word_tf_idf[tok])
-        print('Lowest:')
-        for tok in lowest_score_tokens:
-            print(self.tokenizer.convert_ids_to_tokens(lowest_score_tokens),
-                  word_tf_idf[tok])
+        if article_idx % 500 == 0:
+            print(f'Article {article_idx}:')
+            highest_score_tokens = heapq.nlargest(10, word_tf_idf, key=word_tf_idf.get)
+            lowest_score_tokens = heapq.nsmallest(10, word_tf_idf, key=word_tf_idf.get)
+            print('Highest:')
+            for tok in highest_score_tokens:
+                print(self.tokenizer.convert_ids_to_tokens(tok.item()), word_tf_idf[tok])
+            print('Lowest:')
+            for tok in lowest_score_tokens:
+                print(self.tokenizer.convert_ids_to_tokens(tok.item()), word_tf_idf[tok])
         return word_tf_idf

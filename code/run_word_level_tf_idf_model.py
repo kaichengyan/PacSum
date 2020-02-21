@@ -26,6 +26,7 @@ if __name__ == '__main__':
     extractor = WordLevelTfIdfModel(extract_num=args.extract_num, device=args.device)
 
     dataset = Dataset(args.test_data_file)
+    print("Calculating idf scores...")
     extractor.calculate_idf_scores(dataset.iterate_once_doc_importance())
     dataset_iterator = dataset.iterate_once_doc_importance()
     extractor.extract_summary(dataset_iterator)
