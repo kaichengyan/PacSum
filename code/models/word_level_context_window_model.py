@@ -58,8 +58,12 @@ class WordLevelContextWindowModel(PacSumExtractorWithImportance):
                     self._calculate_single_word_importance(token, windows)
         highest_score_tokens = heapq.nlargest(30, word_iotas, key=word_iotas.get)
         lowest_score_tokens = heapq.nsmallest(30, word_iotas, key=word_iotas.get)
-        print('Highest:', self.tokenizer.convert_ids_to_tokens(highest_score_tokens))
-        print('Lowest: ', self.tokenizer.convert_ids_to_tokens(lowest_score_tokens))
+        print('Highest:')
+        for tok in highest_score_tokens:
+            print(self.tokenizer.convert_ids_to_tokens(tok.item()), word_iotas[tok])
+        print('Lowest:')
+        for tok in lowest_score_tokens:
+            print(self.tokenizer.convert_ids_to_tokens(tok.item()), word_iotas[tok])
         return word_iotas
 
     def _calculate_single_word_importance(self,
